@@ -1,48 +1,56 @@
 """
-Database Schemas
+Database Schemas for Clinical Referral Lab Management
 
-Define your MongoDB collection schemas here using Pydantic models.
-These schemas are used for data validation in your application.
-
-Each Pydantic model represents a collection in your database.
-Model name is converted to lowercase for the collection name:
-- User -> "user" collection
-- Product -> "product" collection
-- BlogPost -> "blogs" collection
+Each Pydantic model represents a collection in MongoDB.
+Collection name is the lowercase of the class name.
 """
+from pydantic import BaseModel, Field, EmailStr
+from typing import Optional, List
+from datetime import datetime
 
-from pydantic import BaseModel, Field
-from typing import Optional
-
-# Example schemas (replace with your own):
+class Role(BaseModel):
+    name: str = Field(..., description="Role name: admin, hospital_staff, lab_tech, viewer")
+    description: Optional[str] = Field(None)
 
 class User(BaseModel):
-    """
-    Users collection schema
-    Collection name: "user" (lowercase of class name)
-    """
-    name: str = Field(..., description="Full name")
-    email: str = Field(..., description="Email address")
-    address: str = Field(..., description="Address")
-    age: Optional[int] = Field(None, ge=0, le=120, description="Age in years")
-    is_active: bool = Field(True, description="Whether user is active")
+    name: str
+    email: EmailStr
+    password_hash: str
+    role: str = Field(..., description="admin | hospital_staff | lab_tech | viewer")
+    is_active: bool = True
 
-class Product(BaseModel):
-    """
-    Products collection schema
-    Collection name: "product" (lowercase of class name)
-    """
-    title: str = Field(..., description="Product title")
-    description: Optional[str] = Field(None, description="Product description")
-    price: float = Field(..., ge=0, description="Price in dollars")
-    category: str = Field(..., description="Product category")
-    in_stock: bool = Field(True, description="Whether product is in stock")
+class Patient(BaseModel):
+    first_name: str
+    last_name: str
+    date_of_birth: Optional[str] = None
+    gender: Optional[str] = Field(None, description="male | female | other")
+    phone: Optional[str] = None
+    email: Optional[EmailStr] = None
+    hospital_id: Optional[str] = Field(None, description="ID of the affiliated hospital")
 
-# Add your own schemas here:
-# --------------------------------------------------
+class TestCatalog(BaseModel):
+    code: str
+    name: str
+    description: Optional[str] = None
+    sample_type: Optional[str] = None
+    price: Optional[float] = None
+    tat_hours: Optional[int] = Field(None, description="Turnaround time in hours")
 
-# Note: The Flames database viewer will automatically:
-# 1. Read these schemas from GET /schema endpoint
-# 2. Use them for document validation when creating/editing
-# 3. Handle all database operations (CRUD) directly
-# 4. You don't need to create any database endpoints!
+class Referral(BaseModel):
+    patient_id: str
+    hospital_id: Optional[str] = None
+    ordered_by: str = Field(..., description="user id of the requester")
+    tests: List[str] = Field(default_factory=list, description="List of test codes")
+    priority: str = Field("normal", description="low | normal | high | stat")
+    status: str = Field("pending", description="pending | received | in_progress | completed | reported")
+    notes: Optional[str] = None
+
+class TestResult(BaseModel):
+    referral_id: str
+    test_code: str
+    value: Optional[str] = None
+    unit: Optional[str] = None
+    reference_range: Optional[str] = None
+    status: str = Field("pending", description="pending | completed | verified")
+    reviewed_by: Optional[str] = None
+    reviewed_at: Optional[datetime] = None
